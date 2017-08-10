@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+
+
+	<link rel="stylesheet" type="text/css"
+    href="https://fonts.googleapis.com/css?family=Open+Sans:400,600">
+
+    
+   
+<style type="text/css">
+html {
+	width:100%;
+}
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  position: relative;
+  width: 100%;
+  height: 600px;
+}
+
+svg {
+	width: 100%;
+	height: 100%;
+	
+}
+
+path.slice{
+	stroke-width:1px;
+	stroke:#333;
+}
+path.slice:hover {
+				fill: #ccc !important;
+}
+#selected:hover {
+	fill:#4C9ED9 !important;
+}
+</style>
+<body>
+
+<script type="text/javascript">
+
+
+			//Width and height
+			var pathid;
+			var cd;
+			var cParent = document.getElementsByTagName('body')[0];
+			var width = cParent.clientWidth;
+			var height = cParent.clientHeight;
+			var goalName = [ 'Five', 'Ten', 'Twenty', 'Fourty Five', 'Six', 'Twenty Five' ];
+			var dataset=[];//[];
+			var id;
+			var mouseClick=false;
+			for(var i=0; i<6; i++) {
+				dataset.push(100/6);
+			}
+			var arcs;
+			var length=dataset.length;
+			var outerRadius = width / 5;
+			var innerRadius = width / 10;
+			var outSide=outerRadius;
+			var totalRadius = outerRadius+innerRadius+200;
+			var mainArc=d3.svg.arc()
+							.innerRadius(0)
+							.outerRadius(width);
+			var arc = d3.svg.arc()
+							.innerRadius(innerRadius)
+							.outerRadius(outerRadius);
+			
+			var pie = d3.layout.pie().sort(null);
+			
+			//Easy colors accessible via a 10-step ordinal scale
+			var color = d3.scale.category10();
+			var svg;
+			var main=d3.select("body");
+			var path;
+			var path2;
+drawPie(dataset);
+function drawPie(dataset) {
+			d3.selectAll("svg").remove();
+			//Create SVG element
+				svg = main
+						.append("svg")
+						.attr("width",width)
+						.attr("height",height);
+			//Set up groups
+			arcs = svg.selectAll("g.arc")
+						  .data(pie(dataset))
+						  .enter()
+						  .append("g")
+						  .attr("width",width)
+						  .attr("height",height)
+						  .attr("class", "arc")
+						  .attr("transform", "translate(" + width/3 + "," + height/2 + ")");
+			// Out side area of a circle for finding angles by mouse 
+			path2=arcs.append("path")
+			    .attr("fill", function(d, i) {
+			    	return 'white';
+			    })
+			    .attr("d", mainArc)
+				.attr("class", "mainAria");
+				
+			//Draw arc paths
+			path=arcs.append("path")
+			    .attr("fill", function(d, i) {
+			    	return '#ddd';
+			    })
+				.attr("id",function(d,i) {
+					if('id'+i==pathid)
+						cd=d;
+					return 'id'+i;
+				})
+				.on("click",function(d,i) {
+					var current=i;
+					pathid='id'+i;
+					var c=arc.centroid(d);
+						x=c[0];
+						y=c[1];
+						// pythagorean theorem for hypotenuse
+						h = Math.sqrt(x*x + y*y);
+					d3.selectAll(".slice")	// Refresh all chart colors.
+					  .attr("fill", "#ddd");
+					d3.select(this)		// Change current slice color.
+						.attr("fill","#4C9ED9")
+						.attr("id","selected");
+					d3.selectAll("circle").remove(); // Removing small circles outside
+					if(pathid=='id'+(length-1)) { // if current slice is end of a circle then 
+												 // Append small circle at the end of slice.
+						arcs.append("circle")
+						/*.attr("transform","translate(" + (x/h * outSide) +  ',' +(y/h * outSide) +  ")")*/
+						.attr("transform","translate(" + 
+									( (outSide) * Math.sin( (d.endAngle) + d.startAngle ) ) +
+									", " +
+									( -1 * (outSide) * Math.cos( (d.endAngle) + d.startAngle ) ) +
+									")")
+						.attr("id",i)
+						.attr("r",5)
+						.attr("stroke","#333")
+						.attr("stroke-width","1px")
+						.attr("fill","#4C9ED9")
+						.on("mouseover",function() {
+							d3.select(this)
+							  .attr("r",7)
+							  .on("mouseout",function() {
+								d3.select(this)
+							     .attr("r",5);
+							});
+						});
+					} else {
+					arcs.append("circle")
+						/*.attr("transform","translate(" + (x/h * outSide) +  ',' +(y/h * outSide) +  ")")*/
+						.attr("transform","translate(" + 
+									( (outSide) * Math.sin( (d.endAngle - d.startAngle) + d.startAngle ) ) +
+									", " +
+									( -1 * (outSide) * Math.cos( (d.endAngle - d.startAngle) + d.startAngle ) ) +
+									")")
+						.attr("id",i)
+						.attr("r",5)
+						.attr("stroke","#333")
+						.attr("stroke-width","1px")
+						.attr("fill","#4C9ED9")
+						.on("mouseover",function() {
+							d3.select(this)
+							  .attr("r",7);
+						})
+						.on("mouseout",function() {
+							d3.select(this)
+							  .attr("r",5);
+						});
+					}			 
+				})
+			    .attr("d", arc)
+				.attr("class", "slice");
+			
+			//Labels
+			arcs.append("text")
+			    .attr("transform", function(d,i) {
+			    	return "translate(" + arc.centroid(d) + ")rotate(" + angle(d) + ")";
+			    })
+			    .attr("text-anchor", "middle")
+			    .text(function(d,i) {
+					
+			    	return goalName[i];
+			    })
+				.attr("font-size",function(d,i) {
+					if(d.data>1 && d.data<15) {
+						return d.data+10+"px";
+					} else {
+						if(d.data<1) {
+							return d.data+"px";
+						} else 
+							return "25px";
+					}
+				});
+			//Main Label
+			arcs.append("text")
+			    
+			    .attr("text-anchor", "middle")
+				.attr("font-size","30px")
+			    .text(function(d,i) {
+					
+			    	return "GOALSCAPE";
+			    });
+			 // Computes the angle of an arc, converting from radians to degrees.
+			function angle(d) {
+			  var a = (d.startAngle + d.endAngle) * 90 / Math.PI - 90;
+			  return a > 90 ? a - 180 : a;
+			}	
+}
+
+//prototype. delegated events
+d3.selection.prototype.delegate = function(event, targetselector, handler) {
+    var self = this;
+    return this.on(event, function() {
+        var eventTarget = d3.event.target,
+            target = self.selectAll(targetselector);
+        target.each(function(){ 
+            //only perform event handler if the eventTarget and intendedTarget match
+            if (eventTarget === this) {
+                handler.call(eventTarget, eventTarget.__data__);
+            } else if (eventTarget.parentNode === this) {
+                handler.call(eventTarget.parentNode, eventTarget.parentNode.__data__);
+            }
+        });
+    });
+};
+	
+d3.select("body")
+  .delegate("mousedown",'circle',function() {
+	id=d3.select(this).attr("id");
+	mouseClick=true;
+	
+  d3.select("body")
+	.delegate("mousemove",'svg .arc', function() {
+		if(mouseClick) {
+			var per=draw(this);
+			var per3=100-per;
+			for(var j=0; j<id; j++) {
+				per=per-dataset[j];
+			}
+			if(id==length-1) //For the last slice
+					per=per3;
+			var	per2=per-dataset[id];//Subtract the current slice weight.
+			var per4=per2/(length-1);//Percent of slice weight increment or decrement.
+			for(var i=0; i<length; i++) {
+				if(i==id) {
+					dataset[i]=per; //Replace the current slice with new weight.
+				}
+				else 
+					dataset[i]=dataset[i]-per4;//Decrement each the rest of slice weight.
+			}
+			drawPie(dataset);
+			var idstr='#'+pathid;
+			d3.select(idstr)		// Maintain the current slice color.
+			  .attr("id","selected")
+			  .attr("fill","#4C9ED9");
+			if(pathid=='id'+(length-1)) { // if current slice is end of a circle then 
+										 // Append small circle at the end of slice.
+				arcs.append("circle")
+				/*.attr("transform","translate(" + (x/h * outSide) +  ',' +(y/h * outSide) +  ")")*/
+				.attr("transform","translate(" + 
+									( (outSide) * Math.sin( (cd.endAngle) + cd.startAngle ) ) +
+									", " +
+									( -1 * (outSide) * Math.cos( (cd.endAngle) + cd.startAngle ) ) +
+				")")
+				.attr("id",id)
+				.attr("r",5)
+				.attr("stroke","#333")
+				.attr("stroke-width","1px")
+				.attr("fill","#4C9ED9")
+				.on("mouseover",function() {
+							d3.select(this)
+							  .attr("r",7);
+						})
+				.on("mouseout",function() {
+								d3.select(this)
+							     .attr("r",5);
+							});
+			} else {
+				arcs.append("circle")
+				/*.attr("transform","translate(" + (x/h * outSide) +  ',' +(y/h * outSide) +  ")")*/
+				.attr("transform","translate(" + 
+								( (outSide) * Math.sin( (cd.endAngle - cd.startAngle) + cd.startAngle ) ) +
+									", " +
+								( -1 * (outSide) * Math.cos( (cd.endAngle - cd.startAngle) + cd.startAngle ) ) +
+				")")
+				.attr("id",id)
+				.attr("r",5)
+				.attr("stroke","#333")
+				.attr("stroke-width","1px")
+				.attr("fill","#4C9ED9")
+				.on("mouseover",function() {
+							d3.select(this)
+							  .attr("r",7)
+				.on("mouseout",function() {
+								d3.select(this)
+							     .attr("r",5);
+							});
+						});
+				}
+			}
+		});	
+	
+});
+d3.select("body")
+  .delegate('mouseup','circle',function(e) {
+  mouseClick=false;
+});
+d3.select("body")
+  .on('mouseup',function(e) {
+  mouseClick=false;
+ // storeWeight();
+});
+
+draw = function(that){
+        var mousePos = d3.mouse(that)
+		console.log(mousePos[0]+' '+mousePos[1]);
+		if(mousePos[0]<0 && mousePos[1]==0)
+			mousePos[1]=-0.1;
+		if(mousePos[0]>0 && mousePos[1]==0)
+			mousePos[1]=0.1;
+		 if(mousePos[0]>=0 && mousePos[1]<=0) {
+			mousePos[1]=mousePos[1]*-1;
+		 } else {
+			if(mousePos[0]<=0 && mousePos[1]<=0) {
+				mousePos[0]=mousePos[0]*-1;
+			} else {
+				if(mousePos[0]<=0 && mousePos[1]>=0) {
+					mousePos[1]=mousePos[1]*-1;
+				} else {
+					mousePos[0]=mousePos[0]*-1;
+				}
+			}
+		 }
+		 
+		
+        var referenceAngle = Math.atan(mousePos[0]/mousePos[1]);
+		
+		
+        referenceAngle += (referenceAngle < 0) ? (Math.PI/2) : 0;
+        if(mousePos[0] >= 0 && mousePos[1] >= 0) angleToMouse = referenceAngle;
+        else if(mousePos[0] <= 0 && mousePos[1] >= 0) angleToMouse = referenceAngle + (Math.PI/2)
+        else if(mousePos[0] <= 0 && mousePos[1] <= 0) angleToMouse = referenceAngle + Math.PI
+        else if(mousePos[0] >= 0 && mousePos[1] <= 0) angleToMouse = referenceAngle + 3*(Math.PI/2)
+        else return
+		
+		var per=angleToMouse/6;
+		
+			per=per*95.5; //Convert angle to percent.
+			return per;
+}
+function storeWeight() {
+	var data={dataset:dataset};
+ $(function() {
+	 $.ajax({
+		 type:'post',
+		 url:'insertWeight.php',
+		 data:data,
+		 success:function(e) {
+		 }
+	 });
+ });
+}
+/*d3.select("body").delegate('mousemove','svg .arc',function() {
+		draw(this);
+		
+}); */
+		
+		</script>
+
+</body>
+</html>
